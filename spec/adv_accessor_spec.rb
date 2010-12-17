@@ -37,10 +37,21 @@ describe "AdvAccessor::Base" do
       base.value = 13
     end
     it "should get mapped value" do
-      base.mapped_value(String).should == "13X"
+      base.mappings.get(String).should == "13X"
     end
     it "should raw exception if value can't be mapped" do
-      lambda { base.mapped_value(Symbol) }.should raise_error(Exception)
+      lambda { base.mappings.get(Symbol) }.should raise_error(Exception)
+    end
+  end
+  describe "mapped array value" do
+    before do
+      @base = AdvAccessor::Base.new
+      base.mappings.act_on_array = true
+      base.mappings.add(Fixnum => String) { |x| x.value.to_s + "X" }
+      base.value = [1,2]
+    end
+    it "should get mapped value" do
+      base.mappings.get(String).should == ["1X","2X"]
     end
   end
   describe "reader, writer, raw" do
@@ -77,6 +88,10 @@ describe "DSL" do
       include AdvAccessor
     end
   end
+  fattr(:f) { @Foo.new }
+  def aa
+    @Foo.instance_eval { @adv_accessor }
+  end
   it "smoke" do
     @Foo.adv_accessor(:bar)
   end
@@ -95,6 +110,71 @@ describe "DSL" do
     f = @Foo.new
     f.bar = 15
     f.bar.should == 15
+  end
+  describe 'mapped reader' do
+    before do
+      @Foo.adv_accessor(:bar) do |a|
+        a.num { |a| a.value.to_i }
+      end
+      f.bar = "15"
+    end
+    it "should have value" do
+      @Foo.instance_eval { @adv_accessor }[:bar].value.should == "15"
+    end
+    it "should have reader value in base" do
+      
+      @Foo.instance_eval { @adv_accessor }[:bar].readers.get(:num).should == 15
+    end
+    it "should have reader value access with method" do
+      f.bar.num.should == 15
+    end
+    it "should have raw access with method" do
+      f.bar.raw.should == '15'
+    end
+  end
+  describe 'mapped reader by class - verbose' do
+    before do
+      @Foo.adv_accessor(:bar) do |a|
+        a.mappings.add(String => Fixnum) { |x| x.value.to_i }
+        a.num(Fixnum)
+      end
+      f.bar = "15"
+    end
+    it 'should have mapping set' do
+      aa[:bar].mappings.get(Fixnum).should == 15
+    end
+    it "should have accessor" do
+      f.bar.num.should == 15
+    end
+  end
+  describe 'mapped reader by class - concise' do
+    before do
+      @Foo.adv_accessor(:bar) do |a|
+        a.num(String => Fixnum) { |x| x.value.to_i }
+      end
+      f.bar = "15"
+    end
+    it 'should have mapping set' do
+      aa[:bar].mappings.get(Fixnum).should == 15
+    end
+    it "should have accessor" do
+      f.bar.num.should == 15
+    end
+  end
+  describe 'mapped reader by class - array' do
+    before do
+      @Foo.adv_accessor(:bar) do |a|
+        a.mappings.act_on_array = true
+        a.num(String => Fixnum) { |x| x.value.to_i }
+      end
+      f.bar = ["1","2"]
+    end
+    it 'should have mapping set' do
+      aa[:bar].mappings.get(Fixnum).should == [1,2]
+    end
+    it "should have accessor" do
+      f.bar.num.should == [1,2]
+    end
   end
 end
 
