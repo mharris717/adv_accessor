@@ -15,9 +15,13 @@ module AdvAccessor
             b = args.pop 
           end
           if args.first.kind_of?(Hash)
-            mappings.add(args.pop,&b)
+            h = args.pop
+            mappings.add(h,&b)
+            base.readers.add(sym,h.values.first)
+          else
+            base.readers.add(sym,*args,&b)
           end
-          base.readers.add(sym,*args,&b)
+          
         end
       end
     end

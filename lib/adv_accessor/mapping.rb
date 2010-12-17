@@ -1,10 +1,14 @@
 require 'ostruct'
 module AdvAccessor
   class Mapping
-    attr_accessor :from, :to, :block
+    attr_accessor :from, :to, :block, :base
     include FromHash
     def match?(ops)
-      from == ops[:val].class && to == ops[:to]
+      if base.act_on_array && ops[:val].kind_of?(Array)
+        from == ops[:val].first.class && to == ops[:to]
+      else
+        from == ops[:val].class && to == ops[:to]
+      end
     end
   end
   class Reader
@@ -36,7 +40,7 @@ module AdvAccessor
     fattr(:act_on_array) { false }
     def add(ops,&b)
       ops.each do |from,to|
-        self << Mapping.new(:from => from, :to => to, :block => b)
+        self << Mapping.new(:from => from, :to => to, :block => b, :base => self)
       end
     end
     def get(arg)
